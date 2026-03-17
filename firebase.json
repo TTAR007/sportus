@@ -1,1 +1,28 @@
-{"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"my-sportus-project","configurations":{"android":"1:1029378433833:android:69a03579f41c717f6d8d38","ios":"1:1029378433833:ios:0fa185667b579c686d8d38"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "my-sportus-project",
+          "configurations": {
+            "android": "1:1029378433833:android:4416b5fc9f986ce36d8d38",
+            "ios": "1:1029378433833:ios:c3806b570ed735266d8d38"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "my-sportus-project",
+          "appId": "1:1029378433833:android:4416b5fc9f986ce36d8d38",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

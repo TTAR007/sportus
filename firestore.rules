@@ -1,27 +1,19 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /activities/{activityId} {
-      // Anyone authenticated can read non-deleted activities
-      allow read: if request.auth != null
-                  && resource.data.deletedAt == null;
 
-      // Only authenticated users can create; hostId must match their UID
-      allow create: if request.auth != null
-                    && request.resource.data.hostId == request.auth.uid;
-
-      // Only the host can update; participant join/leave handled via dedicated logic
-      allow update: if request.auth != null
-                    && (resource.data.hostId == request.auth.uid
-                        || onlyUpdatingParticipants());
-
-      // Never hard delete from client
-      allow delete: if false;
+    // This rule allows anyone with your Firestore database reference to view, edit,
+    // and delete all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // all client requests to your Firestore database will be denied until you Update
+    // your rules
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2026, 4, 16);
     }
-  }
-
-  function onlyUpdatingParticipants() {
-    return request.resource.data.diff(resource.data).affectedKeys()
-      .hasOnly(['participantIds', 'currentParticipants', 'updatedAt']);
   }
 }
