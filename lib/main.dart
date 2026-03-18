@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/auth_gate.dart';
 import 'firebase_options.dart';
+import 'providers/notification_provider.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
@@ -12,6 +14,10 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Register background message handler.
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   runApp(const ProviderScope(child: SportusApp()));
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_text_styles.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../shared/widgets/shimmer_card.dart';
 
 /// Transparently signs the user in anonymously if not authenticated.
@@ -27,6 +28,8 @@ class AuthGate extends ConsumerWidget {
           _signInAnonymously();
           return _LoadingScreen();
         }
+        // Initialize FCM after authentication.
+        ref.watch(notificationSetupProvider);
         return child;
       },
       loading: () => _LoadingScreen(),

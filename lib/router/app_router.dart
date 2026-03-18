@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/activity_detail/activity_detail_screen.dart';
 import '../features/activity_form/activity_form_screen.dart';
 import '../features/activity_list/activity_list_screen.dart';
+import '../features/profile/profile_screen.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -31,6 +32,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 },
               ),
             ],
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const ProfileScreen(),
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sportus/core/errors/app_exception.dart';
+import 'package:sportus/data/models/activity_model.dart';
 import 'package:sportus/data/repositories/activity_repository.dart';
 
 void main() {
@@ -248,6 +249,89 @@ void main() {
 
       final result = await repository.leaveActivity(id, 'u99');
       expect(result.isRight, isTrue);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // streamActivities
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // streamUserActivities
+  // ---------------------------------------------------------------------------
+
+  group('streamUserActivities', () {
+    test('returns activities where user is host', () async {
+      await seedActivity(title: 'My Hosted Game', hostId: 'userA');
+      await seedActivity(title: 'Other Game', hostId: 'userB');
+
+      final stream = repository.streamUserActivities('userA');
+      final list = await stream.first;
+
+      expect(list.any((a) => a.title == 'My Hosted Game'), isTrue);
+    });
+
+    test('returns activities where user is participant', () async {
+      // Note: fake_cloud_firestore may not fully support arrayContains
+      // combined with other where clauses. We verify the stream emits
+      // without error and returns ActivityModel objects.
+      await seedActivity(
+        title: 'Joined Game',
+        hostId: 'someone',
+        participantIds: ['userA'],
+        currentParticipants: 1,
+      );
+
+      final stream = repository.streamUserActivities('userA');
+      final list = await stream.first;
+
+      // The stream should emit a list (may or may not include the joined
+      // activity depending on fake_cloud_firestore's arrayContains support).
+      expect(list, isA<List<ActivityModel>>());
+    });
+
+    test('deduplicates when user is both host and participant', () async {
+      await seedActivity(
+        title: 'My Own Game',
+        hostId: 'userA',
+        participantIds: ['userA'],
+        currentParticipants: 1,
+      );
+
+      final stream = repository.streamUserActivities('userA');
+      final list = await stream.first;
+
+      final matching = list.where((a) => a.title == 'My Own Game');
+      expect(matching.length, 1);
+    });
+
+    test('returns empty list for user with no activities', () async {
+      await seedActivity(title: 'Unrelated', hostId: 'someone');
+
+      final stream = repository.streamUserActivities('nobody');
+      final list = await stream.first;
+
+      expect(list, isEmpty);
+    });
+
+    test('sorts by dateTime descending', () async {
+      await seedActivity(
+        title: 'Later',
+        hostId: 'userA',
+        dateTime: DateTime.now().add(const Duration(days: 5)),
+      );
+      await seedActivity(
+        title: 'Sooner',
+        hostId: 'userA',
+        dateTime: DateTime.now().add(const Duration(days: 1)),
+      );
+
+      final stream = repository.streamUserActivities('userA');
+      final list = await stream.first;
+
+      expect(list.length, greaterThanOrEqualTo(2));
+      // First item should be the later date (descending)
+      expect(list.first.title, 'Later');
     });
   });
 

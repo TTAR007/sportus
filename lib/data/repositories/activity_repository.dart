@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -16,11 +18,15 @@ class ActivityRepository {
   // Stream — real-time activity list
   // ---------------------------------------------------------------------------
 
-  Stream<List<ActivityModel>> streamActivities({String? sportTypeFilter}) {
+  Stream<List<ActivityModel>> streamActivities({
+    String? sportTypeFilter,
+    int limit = 20,
+  }) {
     Query<Map<String, dynamic>> query = _collection
         .where('deletedAt', isNull: true)
         .where('dateTime', isGreaterThan: Timestamp.now())
-        .orderBy('dateTime');
+        .orderBy('dateTime')
+        .limit(limit);
 
     if (sportTypeFilter != null) {
       query = query.where('sportType', isEqualTo: sportTypeFilter);
@@ -30,6 +36,59 @@ class ActivityRepository {
           (snap) =>
               snap.docs.map(ActivityModel.fromFirestore).toList(),
         );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stream — user's activities (hosted or joined)
+  // ---------------------------------------------------------------------------
+
+  Stream<List<ActivityModel>> streamUserActivities(String userId) {
+    final hostedQuery = _collection
+        .where('deletedAt', isNull: true)
+        .where('hostId', isEqualTo: userId)
+        .orderBy('dateTime', descending: true);
+
+    final joinedQuery = _collection
+        .where('deletedAt', isNull: true)
+        .where('participantIds', arrayContains: userId)
+        .orderBy('dateTime', descending: true);
+
+    // Merge both streams via a StreamController. Either stream emitting
+    // triggers a re-merge so the UI always reflects the latest data.
+    final controller = StreamController<List<ActivityModel>>();
+    List<ActivityModel> hostedList = [];
+    List<ActivityModel> joinedList = [];
+
+    void merge() {
+      final Map<String, ActivityModel> deduped = {};
+      for (final a in hostedList) {
+        deduped[a.id] = a;
+      }
+      for (final a in joinedList) {
+        deduped[a.id] = a;
+      }
+      final list = deduped.values.toList()
+        ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+      controller.add(list);
+    }
+
+    final sub1 = hostedQuery.snapshots().listen((snap) {
+      hostedList = snap.docs.map(ActivityModel.fromFirestore).toList();
+      merge();
+    });
+
+    final sub2 = joinedQuery.snapshots().listen((snap) {
+      joinedList = snap.docs.map(ActivityModel.fromFirestore).toList();
+      merge();
+    });
+
+    controller.onCancel = () {
+      sub1.cancel();
+      sub2.cancel();
+      controller.close();
+    };
+
+    return controller.stream;
   }
 
   // ---------------------------------------------------------------------------

@@ -30,13 +30,70 @@ class SportFilterNotifier extends Notifier<SportType?> {
 }
 
 // -----------------------------------------------------------------------------
-// Activity list (stream)
+// Location search
+// -----------------------------------------------------------------------------
+
+final locationSearchProvider =
+    NotifierProvider<LocationSearchNotifier, String>(
+  LocationSearchNotifier.new,
+);
+
+class LocationSearchNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void update(String query) => state = query;
+
+  void clear() => state = '';
+}
+
+// -----------------------------------------------------------------------------
+// Pagination limit
+// -----------------------------------------------------------------------------
+
+final activityLimitProvider =
+    NotifierProvider<ActivityLimitNotifier, int>(
+  ActivityLimitNotifier.new,
+);
+
+class ActivityLimitNotifier extends Notifier<int> {
+  static const _pageSize = 20;
+
+  @override
+  int build() => _pageSize;
+
+  void loadMore() => state = state + _pageSize;
+
+  void reset() => state = _pageSize;
+}
+
+// -----------------------------------------------------------------------------
+// Activity list (stream with pagination)
 // -----------------------------------------------------------------------------
 
 final activityListProvider = StreamProvider<List<ActivityModel>>((ref) {
   final filter = ref.watch(sportFilterProvider);
+  final limit = ref.watch(activityLimitProvider);
   final repo = ref.read(activityRepositoryProvider);
-  return repo.streamActivities(sportTypeFilter: filter?.name);
+  return repo.streamActivities(sportTypeFilter: filter?.name, limit: limit);
+});
+
+// -----------------------------------------------------------------------------
+// Filtered activity list (location search applied)
+// -----------------------------------------------------------------------------
+
+final filteredActivityListProvider =
+    Provider<AsyncValue<List<ActivityModel>>>((ref) {
+  final activitiesAsync = ref.watch(activityListProvider);
+  final search = ref.watch(locationSearchProvider).toLowerCase().trim();
+
+  if (search.isEmpty) return activitiesAsync;
+
+  return activitiesAsync.whenData(
+    (list) => list
+        .where((a) => a.location.toLowerCase().contains(search))
+        .toList(),
+  );
 });
 
 // -----------------------------------------------------------------------------
@@ -191,3 +248,13 @@ class ActivityFormNotifier extends Notifier<ActivityFormState> {
     return result;
   }
 }
+
+// -----------------------------------------------------------------------------
+// User activities (hosted + joined)
+// -----------------------------------------------------------------------------
+
+final userActivitiesProvider =
+    StreamProvider.family<List<ActivityModel>, String>((ref, userId) {
+  final repo = ref.read(activityRepositoryProvider);
+  return repo.streamUserActivities(userId);
+});
